@@ -1,9 +1,11 @@
+
 name: Build Hazard 7007 APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
@@ -22,8 +24,33 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Unpack Android project
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          unzip -q Hazard7007-Android-project.zip -d android-project
+
+      - name: Find Gradle project
+        run: |
+          find android-project -name gradlew -type f
+
       - name: Build APK
         run: |
-          echo "Checking project files"
-          ls -la
-          echo "APK build project must be added before compiling"
+          GRADLEW=$(find android-project -name gradlew -type f | head -n 1)
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew not found"
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$GRADLEW")
+          cd "$PROJECT_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hazard7007-APK
+          path: android-project/**/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          
